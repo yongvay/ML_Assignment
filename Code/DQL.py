@@ -28,7 +28,7 @@ Sumo_config = [
     'sumo',
     '-c', 'RL.sumocfg',
     '--step-length', '0.10',
-    '--delay', '1000',
+    '--delay', '0',
     '--lateral-resolution', '0'
 ]
 
@@ -57,7 +57,7 @@ ALPHA = 0.1            # Learning rate (α) # Update frequency
 GAMMA = 0.9            # Discount factor (γ)  # Care about future reward
 
                                                         
-EPSILON = 0.1          # Exploration rate  
+EPSILON = 0.01          # Exploration rate  
 
 ACTIONS = [0, 1]       # The discrete action space (0 = keep phase, 1 = switch phase)
 
@@ -78,8 +78,8 @@ def build_model(state_size, action_size):
     """
     model = keras.Sequential()                                 # Feedforward neural network
     model.add(layers.Input(shape=(state_size,)))               # Input layer
-    model.add(layers.Dense(24, activation='relu'))             # First hidden layer
-    model.add(layers.Dense(24, activation='relu'))             # Second hidden layer
+    model.add(layers.Dense(16, activation='relu'))             # First hidden layer
+    model.add(layers.Dense(32, activation='relu'))             # Second hidden layer
     model.add(layers.Dense(action_size, activation='linear'))  # Output layer
     model.compile(
         loss='mse',

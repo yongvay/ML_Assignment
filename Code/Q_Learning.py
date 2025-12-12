@@ -25,7 +25,7 @@ Sumo_config = [
     'sumo-gui',
     '-c', 'RL.sumocfg',
     '--step-length', '0.10',
-    '--delay', '1000',
+    '--delay', '0',
     '--lateral-resolution', '0'
 ]
 
@@ -53,7 +53,7 @@ ALPHA = 0.1            # Learning rate (α) between[0, 1]    #If α = 1, you ful
                                                             #If α = 0, you ignore the new estimate and never update the Q-value.
 GAMMA = 0.9            # Discount factor (γ) between[0, 1]  #If γ = 0, the agent only cares about the reward at the current step (no future rewards).
                                                             #If γ = 1, the agent cares equally about current and future rewards, looking at long-term gains.
-EPSILON = 0.1          # Exploration rate (ε) between[0, 1] #If ε = 0 means very greedy, if=1 means very random
+EPSILON = 0.01          # Exploration rate (ε) between[0, 1] #If ε = 0 means very greedy, if=1 means very random
 
 ACTIONS = [0, 1]       # The discrete action space (0 = keep phase, 1 = switch phase)
 

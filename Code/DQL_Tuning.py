@@ -22,6 +22,7 @@ ACTIVATION_FUNCTIONS = ['relu', 'tanh']
 # -------------------------------
 
 # --- Fixed RL and Learning Parameters ---
+ACTIONS = [0, 1]
 FIXED_LEARNING_RATE = 0.001 
 FIXED_EPSILON = 0.01
 FIXED_ALPHA = 0.1
@@ -80,6 +81,9 @@ def get_waitingTimeState_local():
 # ==============================================================================
 # WRAPPER FUNCTION: Runs one full simulation and saves the model (COLLECTS ALL 4 METRICS)
 # ==============================================================================
+# ==============================================================================
+# WRAPPER FUNCTION: Runs one full simulation and saves the model (CORRECTED)
+# ==============================================================================
 def run_simulation(size_1, size_2, activation_fn):
     
     tf.keras.backend.clear_session()
@@ -89,7 +93,10 @@ def run_simulation(size_1, size_2, activation_fn):
     
     # 1. Instantiate the DQN model
     state_size = 7
-    action_size = 2
+    action_size = 2 # Fixed size
+    # Check if ACTIONS is defined globally; we will define it locally to be safe
+    ACTIONS_LIST = [0, 1] 
+    
     dqn_model = build_model(state_size, action_size, size_1, size_2, activation_fn, FIXED_LEARNING_RATE)
 
     # 2. SUMO Setup (Headless for speed)
@@ -101,15 +108,14 @@ def run_simulation(size_1, size_2, activation_fn):
         '--lateral-resolution', '0'
     ]
     
-    # Lists to capture data for visualization (ALL 4 METRICS)
+    # Lists to capture data for visualization
     step_history = []
     reward_history = []
     queue_history = []
-    cumulative_waitingtime_history = []  # Metric 3: Instantaneous WT
-    cumulative_waitingtime_total_history = [] # Metric 4: Cumulative WTSum
     
-    cumulative_waitingtime_total = 0.0
+    # --- Initialize running totals for metrics ---
     cumulative_reward = 0.0
+    cumulative_waiting_time_total = 0.0 # WTSum
     
     try:
         traci.start(Sumo_config)
@@ -134,14 +140,16 @@ def run_simulation(size_1, size_2, activation_fn):
                     last_switch_step = current_simulation_step
 
         def get_action_from_policy_local(state):
+            # FIXED: Uses the local, accessible ACTIONS_LIST
             if random.random() < FIXED_EPSILON:
-                return random.choice(ACTIONS)
+                return random.choice(ACTIONS_LIST) 
             else:
                 state_array = to_array(state)
                 Q_values = dqn_model.predict(state_array, verbose=0)[0]
                 return int(np.argmax(Q_values))
 
         def update_Q_table_local(old_state, action, reward, new_state):
+            # DQN update logic
             Q_values_old = dqn_model.predict(to_array(old_state), verbose=0)[0]
             Q_values_new = dqn_model.predict(to_array(new_state), verbose=0)[0]
             best_future_q = np.max(Q_values_new)
@@ -159,15 +167,10 @@ def run_simulation(size_1, size_2, activation_fn):
             apply_action_local(action)
             traci.simulationStep()
             new_state = get_state_local()
-            new_wt = get_waitingTimeState_local() # New: Collect waiting time for plotting
             
             reward = get_reward(new_state)
             cumulative_reward += reward
             
-            # Metric 4 Update: Total Waiting Time Sum (if phase changed)
-            if (state[-1] != new_state[-1]):
-                cumulative_waitingtime_total += sum(new_wt)
-
             update_Q_table_local(state, action, reward, new_state)
             
             # Record data every 100 steps for visualization
@@ -175,8 +178,6 @@ def run_simulation(size_1, size_2, activation_fn):
                 step_history.append(step)
                 reward_history.append(cumulative_reward)
                 queue_history.append(sum(new_state[:-1])) 
-                cumulative_waitingtime_history.append(sum(new_wt)) # Metric 3: Instantaneous WT
-                cumulative_waitingtime_total_history.append(cumulative_waitingtime_total) # Metric 4: Cumulative WTSum
             
         traci.close()
         
@@ -188,17 +189,20 @@ def run_simulation(size_1, size_2, activation_fn):
         # -----------------------------------------------
         
         # Return the final cumulative reward AND all history lists
-        return cumulative_reward, step_history, reward_history, queue_history, cumulative_waitingtime_history, cumulative_waitingtime_total_history
+        # We only return the main history lists needed for the comparative plot
+        return cumulative_reward, step_history, reward_history, queue_history 
 
     except traci.TraCIException as e:
+        # This catches errors where SUMO is already running or crashes
         print(f"SUMO Error during run (L1: {size_1}, L2: {size_2}, Act: {activation_fn}): {e}")
-        try: traci.close() 
+        try: traci.close() # Attempt to close the connection gracefully
         except: pass
         # Return negative infinity for failed run
-        return -float('inf'), [], [], [], [], []
+        return -float('inf'), [], [], []
     except Exception as e:
+        # This catches the Python syntax errors like the 'ACTIONS not defined'
         print(f"General Python Error: {e}")
-        return -float('inf'), [], [], [], [], []
+        return -float('inf'), [], [], []
 
 
 # ==============================================================================
